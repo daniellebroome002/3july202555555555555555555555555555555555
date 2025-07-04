@@ -18,15 +18,12 @@ import monitorRoutes from './routes/monitor.js';
 import gmailRoutes from './routes/gmailRoutes.js'; // Added Gmail routes
 import debugRoutes from './routes/debug.js'; // Added Debug routes
 import guestRoutes from './routes/guest.js'; // Added Guest routes
-import apiRoutes from './routes/apiRoutes.js'; // Added API routes
-import apiKeyRoutes from './routes/apiKeyRoutes.js'; // Added API key management routes
 import { encryptResponse } from './middleware/encryption.js'; // Added encryption middleware
 import nodemailer from 'nodemailer';
 import http from 'http'; // Added for WebSocket support
 import { setupWebSocketServer } from './services/gmailImapService.js'; // Added for WebSocket
 import { setupActivityTracker } from './services/activityTracker.js'; // Add activity tracker
 import { syncAllDomainsToMailserver, checkMailserverHealth } from './services/domainSyncService.js'; // Add domain sync service
-import { initializeApiMemoryStore } from './services/apiMemoryStore.js'; // Add API memory store
 
 dotenv.config();
 
@@ -114,7 +111,7 @@ app.use((req, res, next) => {
 app.use(cors({
   origin: '*',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Admin-Access', 'X-API-Key'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Admin-Access'],
   credentials: true,
   exposedHeaders: ['Content-Length', 'X-Requested-With', 'X-Request-ID']
 }));
@@ -172,7 +169,6 @@ app.get('/debug/routes', (req, res) => {
 
 // Routes
 app.use('/auth', authRoutes);
-app.use('/auth', apiKeyRoutes); // Add API key management routes to /auth
 app.use('/emails', emailRoutes);
 app.use('/domains', domainRoutes);
 app.use('/webhook', webhookRoutes);
@@ -182,7 +178,6 @@ app.use('/monitor', monitorRoutes);
 app.use('/gmail', gmailRoutes); // Add Gmail routes
 app.use('/debug', debugRoutes); // Add Debug routes
 app.use('/guest', guestRoutes); // Add Guest routes
-app.use('/api/v1', apiRoutes); // Add API routes (separate from encrypted routes)
 
 // Handle preflight requests for /admin/all
 app.options('/emails/admin/all', cors());
@@ -231,10 +226,6 @@ initializeDatabase().then(async () => {
     // Setup WebSocket server for real-time activity tracking
     setupActivityTracker(server);
     console.log('Real-time activity tracking system initialized');
-    
-    // Initialize API memory store
-    initializeApiMemoryStore();
-    console.log('API memory store initialized for temp email API');
     
     // Check mailserver health and sync domains on startup
     console.log('\n🏥 Checking mailserver health...');

@@ -7,7 +7,6 @@ import axios from 'axios';
 import { validateDomain, sanitizeText, createValidationMiddleware } from '../utils/inputValidation.js';
 import { checkCustomDomainLimits } from '../middleware/customDomainRateLimit.js';
 import { syncAllDomainsToMailserver, checkMailserverHealth } from '../services/domainSyncService.js';
-import { invalidateUserDomainsCache } from '../services/apiMemoryStore.js';
 
 const router = express.Router();
 
@@ -290,9 +289,6 @@ router.post('/custom/add', authenticateToken, createValidationMiddleware({
       [id, req.user.id, cleanDomain, 'pending']
     );
 
-    // Invalidate user's domains cache so API calls pick up the new domain immediately
-    invalidateUserDomainsCache(req.user.id);
-
     res.json({ 
       id, 
       domain: cleanDomain, 
@@ -330,9 +326,6 @@ router.post('/custom/:id/verify', authenticateToken, async (req, res) => {
         'UPDATE custom_domains SET status = ?, verified_at = NOW(), last_check_at = NOW() WHERE id = ?',
         ['verified', domainId]
       );
-
-      // Invalidate user's domains cache so API calls can use verified domain immediately
-      invalidateUserDomainsCache(req.user.id);
 
       // Push verified domain to mailserver
       const pushResult = await pushDomainToMailserver(domain.domain, 'add');
@@ -387,9 +380,6 @@ router.delete('/custom/:id', authenticateToken, async (req, res) => {
     if (result.affectedRows === 0) {
       return res.status(404).json({ error: 'Domain not found' });
     }
-
-    // Invalidate user's domains cache so API calls reject deleted domain immediately
-    invalidateUserDomainsCache(req.user.id);
 
     // Push domain deletion to mailserver (only if it was verified)
     if (domain.status === 'verified') {
